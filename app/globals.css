@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Chart chrome. Exposed as CSS variables rather than passed as props so
+       Recharts picks up the theme instantly on toggle, with no extra render
+       cycle and no chance of the axis flashing the wrong colour. */
+    --chart-grid: #e6e9ef;
+    --chart-axis: #8b93a3;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #e3e6ec;
+    --chart-tooltip-ink: #0f172a;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --chart-grid: #1e293b;
+    --chart-axis: #64748b;
+    --chart-tooltip-bg: #111722;
+    --chart-tooltip-border: #1e293b;
+    --chart-tooltip-ink: #e2e8f0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface-muted text-ink antialiased;
+  }
+
+  .dark body {
+    @apply bg-[#0b0f16] text-slate-100;
+  }
+
+  /* Keep the focus ring visible for keyboard users in both themes. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-surface-muted dark:ring-offset-[#0b0f16];
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card transition-colors dark:border-slate-800 dark:bg-[#111722] dark:shadow-card-dark;
+  }
+
+  .card-header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 dark:border-slate-800;
+  }
+
+  .card-title {
+    @apply text-sm font-semibold tracking-tight text-ink dark:text-slate-100;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:hover:bg-slate-700/60;
+  }
+
+  .btn-primary {
+    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700 dark:border-brand-500 dark:bg-brand-500 dark:text-brand-950 dark:hover:bg-brand-400;
+  }
+
+  .btn-danger {
+    @apply border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40;
+  }
+
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink transition-colors placeholder:text-ink-subtle focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500;
+  }
+
+  .field-label {
+    @apply text-xs font-medium text-ink-muted dark:text-slate-400;
+  }
+
+  .alert-error {
+    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300;
+  }
+
+  .alert-ok {
+    @apply rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300;
+  }
+
+  .alert-info {
+    @apply rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200;
+  }
+
+  .table-head {
+    @apply text-left text-[11px] font-semibold uppercase tracking-wider text-ink-subtle dark:text-slate-500;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-100;
+  }
+
+  .nav-link-active {
+    @apply bg-brand-50 text-brand-700 hover:bg-brand-50 hover:text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-300;
+  }
+}
+
+@layer utilities {
+  /* Recharts injects its own focus outline on the SVG wrapper, which shows up
+     as a stray ring around charts. Suppress it to match the rest of the UI. */
+  .recharts-wrapper:focus,
+  .recharts-surface:focus {
+    outline: none;
+  }
+}

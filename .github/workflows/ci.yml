@@ -1,0 +1,114 @@
+name: CI
+
+# Runs on every push and pull request targeting the branches the project is
+# released from, so a change cannot reach main without being built and linted.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Least privilege: CI only ever needs to read the repository. Without this, the
+# default token can be wider than necessary and a compromised action inherits it.
+permissions:
+  contents: read
+
+# A new push to the same branch makes any in-flight run obsolete, so the older run
+# is cancelled instead of burning minutes on a commit nobody will merge.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # A single job on purpose. The specification requires the checks to run in
+    # the order Install Dependencies -> Build Project -> Lint, so the steps are
+    # sequential here rather than split across parallel jobs. Each step stops the
+    # pipeline on failure, which keeps the report from showing a green Lint next
+    # to a red Build.
+    name: Install -> Build -> Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Restores the npm cache keyed on the lockfile, which is what makes
+          # `npm ci` fast. Requires package-lock.json to be committed.
+          cache: npm
+
+      # ---- 1. Install Dependencies -------------------------------------------
+      - name: 1. Install Dependencies
+        id: install
+        # `ci` instead of `install`: it installs exactly the locked versions and
+        # fails when package.json and package-lock.json disagree, so CI can never
+        # quietly pass against different dependencies than the ones committed.
+        run: npm ci
+
+      # ---- 2. Build Project --------------------------------------------------
+      - name: 2. Build Project
+        id: build
+        # Placeholders only. The first two are public-by-design variables, so a
+        # placeholder value leaks nothing. SUPABASE_JWT_SECRET is a real secret, so
+        # the value here is a throwaway string: the build never signs anything, it
+        # only has to compile. They are supplied so the build compiles the same way
+        # it does in production rather than only succeeding because the values
+        # happen to be absent.
+        # No OpenAI key is passed: the analyzer is a dynamic route handler that is
+        # never executed at build time, so the build must work without one.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_JWT_SECRET: placeholder-jwt-secret-not-used-at-build-time
+        run: npm run build
+
+      # ---- 3. Lint -----------------------------------------------------------
+      - name: 3. Lint
+        id: lint
+        run: npm run lint
+
+      # ---- Report ------------------------------------------------------------
+      # `always()` so the report is still produced when a step above failed, which
+      # is exactly when the reader wants to see which check broke.
+      - name: CI Summary
+        if: always()
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped)   echo "⏭️" ;;
+              *)         echo "⏭️" ;;
+            esac
+          }
+
+          {
+            echo "## CI Result"
+            echo ""
+            echo "ตรวจสอบตามลำดับ: Install Dependencies → Build Project → Lint"
+            echo ""
+            echo "| # | ขั้นตอน | ผลลัพธ์ |"
+            echo "| --- | --- | --- |"
+            echo "| 1 | Install Dependencies (\`npm ci\`) | $(icon "$INSTALL_OUTCOME") ${INSTALL_OUTCOME:-skipped} |"
+            echo "| 2 | Build Project (\`npm run build\`) | $(icon "$BUILD_OUTCOME") ${BUILD_OUTCOME:-skipped} |"
+            echo "| 3 | Lint (\`npm run lint\`) | $(icon "$LINT_OUTCOME") ${LINT_OUTCOME:-skipped} |"
+            echo ""
+            echo "Commit: \`${{ github.sha }}\` on \`${{ github.ref_name }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Turn a failed check into a failed workflow, so the run cannot report
+      # success while any of its required steps is red.
+      - name: Fail the workflow if any check failed
+        if: steps.install.outcome != 'success' || steps.build.outcome != 'success' || steps.lint.outcome != 'success'
+        run: |
+          echo "::error::CI failed (install: ${INSTALL_OUTCOME:-?}, build: ${BUILD_OUTCOME:-?}, lint: ${LINT_OUTCOME:-?})"
+          exit 1

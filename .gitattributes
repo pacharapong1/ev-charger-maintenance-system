@@ -1,0 +1,21 @@
+# Normalise line endings so the same file does not show as modified on every
+# checkout just because the contributor is on Windows.
+* text=auto eol=lf
+
+# These must stay LF regardless of platform.
+*.sql text eol=lf
+*.yml text eol=lf
+*.mjs text eol=lf
+*.js  text eol=lf
+
+# Binary assets are never diffed or line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico  binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Lockfiles are generated; keep diffs readable and avoid merge conflicts.
+package-lock.json -diff
